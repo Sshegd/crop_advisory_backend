@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import credentials
 import os, json
+import uvicorn
+
 
 # ---------------- FIREBASE INITIALIZATION ---------------- #
 if not firebase_admin._apps:
@@ -55,7 +57,6 @@ async def advice_new(data: dict):
     rec = [maybe_translate(r, lang) for r in rec]
 
     return {"success": True, "advisory": base, "recommendations": rec}
-
 # ---------------- ROOT CHECK ENDPOINT ---------------- #
 @app.get("/")
 def root():
@@ -65,3 +66,6 @@ def root():
     }
 
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
