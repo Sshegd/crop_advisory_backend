@@ -1,40 +1,65 @@
-import joblib
-import random
-
 class MLAdvisor:
 
-    def __init__(self):
-        self.existing_model = joblib.load("models/existing_model.pkl")
-        self.new_crop_rec = joblib.load("models/new_crop_recommender.pkl")
-
     def existing_crop_advice(self, logs):
-        predicted = self.existing_model.predict([[
-            logs.get("avgSoilMoisture", 0),
-            logs.get("avgFertilizer", 0),
-            logs.get("avgPestIndex", 0)
-        ]])[0]
+        """Generate advisory based on latest farm log information (no ML yet)"""
+        if not logs:
+            return (
+                "No log data found for this crop.",
+                ["Please record activities such as watering, fertilization, pest symptoms etc."]
+            )
 
-        base = f"Based on farm progress, the next optimal action is: {predicted}"
-        recommendations = [
-            "Use drip irrigation to avoid fungal growth.",
-            "Apply neem cake once every 20–30 days.",
-            "Monitor pest presence after rainfall."
-        ]
-        random.shuffle(recommendations)
-        return base, recommendations
+        last = logs[-1]  # latest activity
+
+        sub = last.get("subActivity", "").lower()
+
+        if "water" in sub:
+            base = "Continue regulated irrigation schedule."
+            rec = [
+                "Maintain soil moisture but avoid waterlogging.",
+                "Apply irrigation during early morning to reduce evaporation."
+            ]
+        elif "nutrient" in sub:
+            base = "Continue nutrient management based on crop uptake."
+            rec = [
+                "Apply fertilizers based on soil test.",
+                "Avoid excess nitrogen to prevent weak growth."
+            ]
+        elif "pest" in sub or "disease" in sub:
+            base = "Attention required — pest/disease symptoms noticed."
+            rec = [
+                "Apply recommended bio-pesticides immediately.",
+                "Remove affected leaves and maintain field hygiene."
+            ]
+        else:
+            base = "Crop is in good condition."
+            rec = [
+                "Maintain field sanitation.",
+                "Periodic irrigation and monitoring recommended."
+            ]
+
+        return base, rec
 
     def new_crop_recommend(self, farm):
-        best_crop = self.new_crop_rec.predict([[
-            farm.get("rainfall", 200),
-            farm.get("temperature", 26),
-            farm.get("soilTypeIndex", 1)
-        ]])[0]
+        """Suggest new crop based on location, soil & weather"""
+        soil = farm.get("soilType", "").lower()
+        district = farm.get("district", "").lower()
+        weather = farm.get("weather", "").lower()
 
-        advisory = f"We recommend growing {best_crop} for highest profitability."
-        recommendations = [
-            "Use high-quality certified seedlings",
-            "Drip irrigation recommended",
-            "Soil test twice per year",
-            "Pest monitoring during peak season"
+        if "red" in soil:
+            crop = "Arecanut"
+        elif "black" in soil:
+            crop = "Cotton"
+        elif "sandy" in soil:
+            crop = "Groundnut"
+        else:
+            crop = "Maize"
+
+        base = f"Recommended crop to plant: {crop}"
+        rec = [
+            f"Choose high-yielding variety of {crop}.",
+            "Ensure soil preparation before sowing.",
+            "Use drip irrigation for water efficiency.",
+            "Apply organic manure + NPK as per requirement.",
+            "Monitor for pests from early stage."
         ]
-        return advisory, recommendations
+        return base, rec
