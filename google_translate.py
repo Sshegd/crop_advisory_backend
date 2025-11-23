@@ -1,15 +1,16 @@
 import os, json
 from google.cloud import translate_v2 as translate
-from google.oauth2.service_account import Credentials
+from google.oauth2 import service_account
 
-def get_client():
-    key_json = os.environ.get("GOOGLE_TRANSLATE_KEY")
+def get_translate_client():
+    # If running on Railway (ENV variable)
+    if "GOOGLE_TRANSLATE_KEY" in os.environ:
+        key_json = json.loads(os.environ["GOOGLE_TRANSLATE_KEY"])
+        credentials = service_account.Credentials.from_service_account_info(key_json)
+    else:
+        # local fallback for development
+        credentials = service_account.Credentials.from_service_account_file(
+            "google_translate_key.json"
+        )
 
-    if not key_json:
-        raise Exception("Translation key missing in Railway env variables!")
-
-    info = json.loads(key_json)
-    creds = Credentials.from_service_account_info(info)
-    return translate.Client(credentials=creds)
-
-translator = get_client()
+    return translate.Client(credentials=credentials)
