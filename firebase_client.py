@@ -10,7 +10,8 @@ def init_firebase():
         else:
             cred = credentials.Certificate("serviceAccountKey.json")  # local fallback
         firebase_admin.initialize_app(cred, {
-            "databaseURL": "https://<your-project-id>.firebaseio.com"
+            "databaseURL": "https://krishisakhi-fc477-default-rtdb.firebaseio.com"
         })
 
 init_firebase()
+
