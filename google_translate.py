@@ -1,18 +1,15 @@
+import os, json
 from google.cloud import translate_v2 as translate
-import os
+from google.oauth2.service_account import Credentials
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_translate_key.json"
+def get_client():
+    key_json = os.environ.get("GOOGLE_TRANSLATE_KEY")
 
-translator = translate.Client()
+    if not key_json:
+        raise Exception("Translation key missing in Railway env variables!")
 
-def translate_text(data, target_language="kn"):
-    if isinstance(data, dict):
-        return {k: translate_text(v, target_language) for k, v in data.items()}
-    if isinstance(data, list):
-        return [translate_text(item, target_language) for item in data]
+    info = json.loads(key_json)
+    creds = Credentials.from_service_account_info(info)
+    return translate.Client(credentials=creds)
 
-    if not isinstance(data, str):
-        return data  # numbers etc.
-
-    result = translator.translate(data, target_language=target_language)
-    return result["translatedText"]
+translator = get_client()
