@@ -55,3 +55,13 @@ async def advice_new(data: dict):
     rec = [maybe_translate(r, lang) for r in rec]
 
     return {"success": True, "advisory": base, "recommendations": rec}
+
+# ---------------- ROOT CHECK ENDPOINT ---------------- #
+@app.get("/")
+def root():
+    return {
+        "status": "running",
+        "message": "Crop Advisory API deployed successfully 🚀"
+    }
+
+
