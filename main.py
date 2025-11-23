@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from ml_advisor import MLAdvisor
-from translation import translate_text
+from google_translate import translate_text
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import credentials, initialize_app
 import os, json
