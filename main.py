@@ -1,18 +1,19 @@
 from fastapi import FastAPI
 from ml_advisor import MLAdvisor
-from google_translate import translate_text
+from google_translate import translate_text       # <-- make sure filename is google_translate.py
 from fastapi.middleware.cors import CORSMiddleware
-from firebase_admin import credentials, initialize_app
+import firebase_admin
+from firebase_admin import credentials
 import os, json
 
 # ---------------- FIREBASE INITIALIZATION ---------------- #
-if "FIREBASE_KEY" in os.environ:
-    key_json = json.loads(os.environ["FIREBASE_KEY"])
-    cred = credentials.Certificate(key_json)
-else:
-    cred = credentials.Certificate("serviceAccountKey.json")  # local fallback
-
-initialize_app(cred)
+if not firebase_admin._apps:
+    if "SERVICE_ACCOUNT_KEY" in os.environ:
+        creds_json = json.loads(os.environ["SERVICE_ACCOUNT_KEY"])
+        cred = credentials.Certificate(creds_json)
+    else:
+        raise Exception("SERVICE_ACCOUNT_KEY missing in Railway Variables")
+    firebase_admin.initialize_app(cred)
 
 # ---------------- FASTAPI APP + ML ---------------- #
 app = FastAPI()
@@ -20,7 +21,7 @@ advisor = MLAdvisor()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # allow Android or web access
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +29,6 @@ app.add_middleware(
 
 # ---------------- HELPERS ---------------- #
 def maybe_translate(text, lang):
-    """Translate only if not English"""
     return translate_text(text, lang) if lang != "en" else text
 
 # ---------------- EXISTING CROP ADVICE ---------------- #
@@ -42,11 +42,7 @@ async def advice_existing(data: dict):
     base = maybe_translate(base, lang)
     rec = [maybe_translate(r, lang) for r in rec]
 
-    return {
-        "success": True,
-        "advisory": base,
-        "recommendations": rec
-    }
+    return {"success": True, "advisory": base, "recommendations": rec}
 
 # ---------------- NEW CROP RECOMMENDATION ---------------- #
 @app.post("/advice/new")
@@ -58,8 +54,4 @@ async def advice_new(data: dict):
     base = maybe_translate(base, lang)
     rec = [maybe_translate(r, lang) for r in rec]
 
-    return {
-        "success": True,
-        "advisory": base,
-        "recommendations": rec
-    }
+    return {"success": True, "advisory": base, "recommendations": rec}
