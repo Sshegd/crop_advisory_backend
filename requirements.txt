@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+firebase_admin
+google-cloud-translate
+requests
+pydantic
+numpy
+pandas
+scikit-learn
+joblib
