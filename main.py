@@ -1,80 +1,65 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-from firebase_admin import credentials, db, initialize_app
-from ml_existing_crop import ExistingCropAdvisor
-from ml_new_crop import NewCropAdvisor
-from google_translate import translate_text
+from ml_advisor import MLAdvisor
+from translation import translate_text
+from fastapi.middleware.cors import CORSMiddleware
+from firebase_admin import credentials, initialize_app
+import os, json
 
+# ---------------- FIREBASE INITIALIZATION ---------------- #
+if "FIREBASE_KEY" in os.environ:
+    key_json = json.loads(os.environ["FIREBASE_KEY"])
+    cred = credentials.Certificate(key_json)
+else:
+    cred = credentials.Certificate("serviceAccountKey.json")  # local fallback
+
+initialize_app(cred)
+
+# ---------------- FASTAPI APP + ML ---------------- #
 app = FastAPI()
+advisor = MLAdvisor()
 
-# ---------- Firebase Setup ----------
-cred = credentials.Certificate("serviceAccountKey.json")
-initialize_app(cred, {
-    "databaseURL": "https://YOUR_PROJECT_URL.firebaseio.com/"
-})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # allow Android or web access
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# ---------- Load ML Classes ----------
-existing_advisor = ExistingCropAdvisor()
-new_advisor = NewCropAdvisor()
+# ---------------- HELPERS ---------------- #
+def maybe_translate(text, lang):
+    """Translate only if not English"""
+    return translate_text(text, lang) if lang != "en" else text
 
-# ---------- Requests ----------
-class ExistingAdviceReq(BaseModel):
-    userId: str
-    cropKey: str
-    languageCode: str
-
-class NewAdviceReq(BaseModel):
-    userId: str
-    district: str
-    taluk: str
-    soilType: str
-    farmSizeAcre: float
-    season: str
-    avgRainfall: float
-    avgTemp: float
-    languageCode: str
-
-# ---------- Existing Crop Advisory ----------
+# ---------------- EXISTING CROP ADVICE ---------------- #
 @app.post("/advice/existing")
-def get_existing_advice(req: ExistingAdviceReq):
-    farm_ref = db.reference(f"Users/{req.userId}/farmDetails").get()
-    logs_ref = db.reference(f"Users/{req.userId}/farmActivityLogs/{req.cropKey}").get()
+async def advice_existing(data: dict):
+    logs = data.get("logs", [])
+    lang = data.get("language", "en")
 
-    response = existing_advisor.generate_advice(
-        farm_details=farm_ref or {},
-        logs=logs_ref or {}
-    )
+    base, rec = advisor.existing_crop_advice(logs)
 
-    if req.languageCode == "kn":
-        response = translate_text(response, target_language="kn")
+    base = maybe_translate(base, lang)
+    rec = [maybe_translate(r, lang) for r in rec]
 
-    return response
-
-# ---------- New Crop Advisory ----------
-@app.post("/advice/new")
-def get_new_advice(req: NewAdviceReq):
-    farm_ref = db.reference(f"Users/{req.userId}/farmDetails").get()
-
-    extra = {
-        "district": req.district,
-        "taluk": req.taluk,
-        "soilType": req.soilType,
-        "farmSizeAcre": req.farmSizeAcre,
-        "season": req.season,
-        "avgRainfall": req.avgRainfall,
-        "avgTemp": req.avgTemp,
+    return {
+        "success": True,
+        "advisory": base,
+        "recommendations": rec
     }
 
-    response = new_advisor.generate_advice(
-        farm_details=farm_ref or {},
-        extra=extra
-    )
+# ---------------- NEW CROP RECOMMENDATION ---------------- #
+@app.post("/advice/new")
+async def advice_new(data: dict):
+    lang = data.get("language", "en")
 
-    if req.languageCode == "kn":
-        response = translate_text(response, target_language="kn")
+    base, rec = advisor.new_crop_recommend(data)
 
-    return response
+    base = maybe_translate(base, lang)
+    rec = [maybe_translate(r, lang) for r in rec]
 
-@app.get("/")
-def root():
-    return {"status": "Crop Advisory Backend Running ✔"}
+    return {
+        "success": True,
+        "advisory": base,
+        "recommendations": rec
+    }
