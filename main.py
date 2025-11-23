@@ -59,16 +59,12 @@ async def advice_new(data: dict):
     return {"success": True, "advisory": base, "recommendations": rec}
 # ---------------- ROOT CHECK ENDPOINT ---------------- #
 @app.get("/")
-def root():
+async def home():
     return {
         "status": "running",
-        "message": "Crop Advisory API deployed successfully 🚀"
+        "service": "Crop Advisory Backend",
+        "message": "API is online 🚀"
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
 
